@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Worker-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <script src="/clooney.js"></script>
+    <script>
+        async function main() {
+            class Worker {
+                constructor(id) {
+                    this.id = id;
+                    this.data = null;
+                }
+                setSharedArrayBuffer(sab) {
+                    this.data = new Int32Array(sab)
+                }
+                setMyID() {
+                    return Atomics.store(this.data, this.id, this.id);
+                }
+                logSharedData() {
+                    console.log(this.data);
+                }
+                log() {
+                    console.log(`hai. I am ${this.id}`);
+                    return this.id;
+                }
+            }
+
+            const fiveGuys = new Clooney.RoundRobinStrategy({ maxNumContainers: 2 });
+
+            const NUMBER_OF_WORKERS = 5;
+
+            async function createWorkers(numberOfWorkers = 1) {
+                const pArray = Array.from({ length: numberOfWorkers }).map(async (_, i) => {
+                    const worker = await fiveGuys.spawn(Worker, [i]);
+                    return worker;
+                })
+                workers = await Promise.all(pArray);
+                return workers;
+            }
+
+            workers = await createWorkers(NUMBER_OF_WORKERS);
+            workers.forEach(worker => worker.log())
+
+            const size = Int32Array.BYTES_PER_ELEMENT * NUMBER_OF_WORKERS;
+            const sharedBuffer = new SharedArrayBuffer(size);
+            const sharedArray = new Int32Array(sharedBuffer);
+
+            await workers.forEach(worker => worker.setSharedArrayBuffer(sharedBuffer));
+            await workers.forEach(worker => worker.setMyID());
+
+            console.log(sharedArray);
+
+        }
+        main();
+    </script>
+
+</body>
+
+</html>
